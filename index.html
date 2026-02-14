@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة الرشيدي - نظام QR والكاميرا</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
+        * { font-family: 'Cairo', sans-serif; }
+        .gold-gradient { background: linear-gradient(135deg, #eab308, #ca8a04); }
+        .glass { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        #reader { width: 100%; height: auto; border-radius: 1rem; overflow: hidden; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-900 to-slate-800 min-h-screen text-white">
+
+    <!-- ==================== الصفحة الرئيسية ==================== -->
+    <div id="homePage" class="w-full max-w-4xl mx-auto p-4 min-h-screen flex items-center justify-center">
+        <div class="text-center w-full">
+            <h1 class="text-5xl font-black text-white mb-4">🌟 منصة <span class="text-amber-400">الرشيدي</span> التعليمية</h1>
+            <p class="text-gray-400 text-lg mb-8">مستر محمد رستم</p>
+
+            <div class="max-w-md mx-auto bg-slate-800/50 p-6 rounded-3xl border border-slate-700">
+                <div class="mb-4">
+                    <select id="userType" class="w-full p-3 rounded-xl bg-slate-700 border border-slate-600 text-white">
+                        <option value="teacher">👨‍🏫 دخول المدرس</option>
+                        <option value="student">👨‍🎓 دخول الطالب</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <input type="password" id="password" placeholder="كلمة المرور أو كود الطالب" class="w-full p-3 rounded-xl bg-slate-700 border border-slate-600 text-white">
+                </div>
+                <button onclick="login()" class="w-full bg-amber-500 text-slate-900 font-bold py-3 rounded-xl hover:bg-amber-400 transition">
+                    دخول
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== لوحة المدرس ==================== -->
+    <div id="teacherPanel" class="hidden w-full max-w-6xl mx-auto p-4">
+        <!-- الهيدر -->
+        <div class="glass sticky top-0 z-40 p-4 mb-6 rounded-2xl">
+            <div class="flex justify-between items-center">
+                <h2 class="text-2xl font-black text-amber-400">لوحة تحكم المدرس</h2>
+                <div class="flex gap-2">
+                    <button onclick="openCamera()" class="bg-green-600 text-white px-4 py-2 rounded-xl flex items-center gap-2">
+                        📷 كاميرا الحضور
+                    </button>
+                    <button onclick="logout()" class="bg-red-500/20 text-red-500 px-4 py-2 rounded-xl">خروج</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- إحصائيات -->
+        <div class="grid grid-cols-4 gap-3 mb-6">
+            <div class="bg-slate-800 p-3 rounded-xl text-center">
+                <span class="text-xs text-gray-400">الطلاب</span>
+                <p id="totalStudents" class="text-xl font-black text-amber-400">0</p>
+            </div>
+            <div class="bg-slate-800 p-3 rounded-xl text-center">
+                <span class="text-xs text-gray-400">الفيديوهات</span>
+                <p id="totalVideos" class="text-xl font-black text-blue-400">0</p>
+            </div>
+            <div class="bg-slate-800 p-3 rounded-xl text-center">
+                <span class="text-xs text-gray-400">المشاهدات</span>
+                <p id="totalViews" class="text-xl font-black text-green-400">0</p>
+            </div>
+            <div class="bg-slate-800 p-3 rounded-xl text-center">
+                <span class="text-xs text-gray-400">الحضور اليوم</span>
+                <p id="todayAttendance" class="text-xl font-black text-purple-400">0</p>
+            </div>
+        </div>
+
+        <!-- تبويبات -->
+        <div class="flex bg-slate-800 rounded-2xl overflow-hidden mb-6">
+            <button onclick="showTeacherTab('students')" id="tabStudents" class="tab-btn active-tab flex-1 py-3 font-bold">👥 الطلاب</button>
+            <button onclick="showTeacherTab('videos')" id="tabVideos" class="tab-btn flex-1 py-3 font-bold">🎬 المحاضرات</button>
+            <button onclick="showTeacherTab('attendance')" id="tabAttendance" class="tab-btn flex-1 py-3 font-bold">📅 الحضور</button>
+        </div>
+
+        <!-- قسم الطلاب مع QR Code -->
+        <div id="studentsSection" class="tab-section">
+            <div class="bg-slate-800 p-6 rounded-2xl mb-6">
+                <h3 class="font-bold mb-4 text-lg text-amber-400">➕ إضافة طالب جديد</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <input type="text" id="stdName" placeholder="اسم الطالب" class="p-3 rounded-xl bg-slate-700 border-slate-600 text-white">
+                    <input type="text" id="stdCode" placeholder="كود الطالب" class="p-3 rounded-xl bg-slate-700 border-slate-600 text-white">
+                    <input type="text" id="stdParent" placeholder="رقم ولي الأمر" class="p-3 rounded-xl bg-slate-700 border-slate-600 text-white">
+                    <input type="text" id="stdCenter" placeholder="اسم السنتر" class="p-3 rounded-xl bg-slate-700 border-slate-600 text-white">
+                    <select id="stdYear" class="p-3 rounded-xl bg-slate-700 border-slate-600 text-white">
+                        <option value="1">الصف الأول</option>
+                        <option value="2">الصف الثاني</option>
+                        <option value="3">الصف الثالث</option>
+                    </select>
+                    <button onclick="addStudent()" class="bg-amber-500 text-slate-900 font-bold rounded-xl p-3">حفظ</button>
+                </div>
+            </div>
+            <div id="studentsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </div>
+
+        <!-- قسم الفيديوهات -->
+        <div id="videosSection" class="tab-section hidden">
+            <div class="bg-slate-800 p-6 rounded-2xl mb-6">
+                <h3 class="font-bold mb-4 text-lg text-blue-400">➕ إضافة محاضرة</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <input type="text" id="videoTitle" placeholder="عنوان المحاضرة" class="p-3 rounded-xl bg-slate-700 border-slate-600 text-white">
+                    <input type="text" id="videoUrl" placeholder="رابط يوتيوب" class="p-3 rounded-xl bg-slate-700 border-slate-600 text-white">
+                    <input type="text" id="videoCenter" placeholder="السنتر المستهدف" class="p-3 rounded-xl bg-slate-700 border-slate-600 text-white">
+                    <select id="videoYear" class="p-3 rounded-xl bg-slate-700 border-slate-600 text-white">
+                        <option value="all">كل السنوات</option>
+                        <option value="1">الصف الأول</option>
+                        <option value="2">الصف الثاني</option>
+                        <option value="3">الصف الثالث</option>
+                    </select>
+                    <input type="number" id="videoMaxViews" placeholder="حد المشاهدات" value="10" class="p-3 rounded-xl bg-slate-700 border-slate-600 text-white">
+                    <button onclick="addVideo()" class="bg-blue-600 text-white font-bold rounded-xl p-3">نشر</button>
+                </div>
+            </div>
+            <div id="videosList" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        </div>
+
+        <!-- قسم الحضور -->
+        <div id="attendanceSection" class="tab-section hidden">
+            <div class="bg-slate-800 p-6 rounded-2xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-lg">📅 سجل الحضور</h3>
+                    <button onclick="openCamera()" class="bg-green-600 text-white px-4 py-2 rounded-xl flex items-center gap-2">
+                        📷 مسح QR
+                    </button>
+                </div>
+                <div class="mb-4">
+                    <input type="date" id="attendanceDate" class="p-2 rounded-lg bg-slate-700 text-white">
+                </div>
+                <div id="attendanceList" class="space-y-2 max-h-96 overflow-y-auto"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== لوحة الطالب ==================== -->
+    <div id="studentPanel" class="hidden w-full max-w-4xl mx-auto p-4">
+        <div class="glass sticky top-0 z-40 p-4 mb-6 rounded-2xl">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 id="studentName" class="text-2xl font-black text-blue-400"></h2>
+                    <p id="studentInfo" class="text-sm text-gray-400"></p>
+                </div>
+                <div class="flex gap-2">
+                    <div id="studentQRCode" class="w-12 h-12 bg-white p-1 rounded-lg"></div>
+                    <button onclick="logout()" class="bg-red-500/20 text-red-500 px-4 py-2 rounded-xl">خروج</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div id="studentVideos" class="space-y-4">
+                <h3 class="font-bold text-lg text-blue-400">🎬 المحاضرات المتاحة</h3>
+                <div id="studentVideosList" class="space-y-4"></div>
+            </div>
+            <div>
+                <h3 class="font-bold text-lg text-green-400">📅 سجل حضورك</h3>
+                <div id="studentAttendance" class="bg-slate-800 p-4 rounded-2xl mt-4 space-y-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة الكاميرا -->
+    <div id="cameraModal" class="hidden fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-800 rounded-3xl w-full max-w-2xl p-4">
+            <div class="flex justify-between mb-4">
+                <h3 class="text-xl font-bold text-green-400">📷 مسح QR كود الطالب</h3>
+                <button onclick="closeCamera()" class="text-white text-3xl">&times;</button>
+            </div>
+            <div id="reader" class="w-full rounded-xl overflow-hidden bg-black"></div>
+            <div id="scanResult" class="mt-4 p-3 rounded-xl text-center font-bold"></div>
+        </div>
+    </div>
+
+    <!-- نافذة الفيديو -->
+    <div id="videoModal" class="hidden fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-800 rounded-3xl w-full max-w-4xl p-4">
+            <div class="flex justify-between mb-4">
+                <h3 id="modalTitle" class="text-xl font-bold text-blue-400"></h3>
+                <button onclick="closeModal()" class="text-white text-3xl">&times;</button>
+            </div>
+            <div id="modalVideo" class="aspect-video bg-black rounded-xl"></div>
+            <div class="mt-4 flex justify-between text-sm">
+                <span id="modalViews" class="text-gray-400"></span>
+                <span id="modalRemaining" class="text-amber-400 font-bold"></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // بيانات
+        let students = JSON.parse(localStorage.getItem('students')) || [];
+        let videos = JSON.parse(localStorage.getItem('videos')) || [];
+        let attendance = JSON.parse(localStorage.getItem('attendance')) || {};
+        let currentUser = null;
+        let html5QrCode = null;
+
+        // ==================== الدخول والخروج ====================
+        function login() {
+            const type = document.getElementById('userType').value;
+            const pass = document.getElementById('password').value;
+
+            if(type === 'teacher' && pass === '1234') {
+                document.getElementById('homePage').classList.add('hidden');
+                document.getElementById('teacherPanel').classList.remove('hidden');
+                updateTeacherUI();
+            } else if(type === 'student') {
+                const student = students.find(s => s.code === pass);
+                if(student) {
+                    currentUser = student;
+                    document.getElementById('homePage').classList.add('hidden');
+                    document.getElementById('studentPanel').classList.remove('hidden');
+                    document.getElementById('studentName').innerText = `أهلاً ${student.name}`;
+                    document.getElementById('studentInfo').innerText = `${student.center} - سنة ${student.year}`;
+                    
+                    // إنشاء QR Code للطالب
+                    document.getElementById('studentQRCode').innerHTML = '';
+                    new QRCode(document.getElementById('studentQRCode'), {
+                        text: String(student.code),
+                        width: 48,
+                        height: 48
+                    });
+                    
+                    updateStudentUI();
+                } else {
+                    alert('كود طالب غير صحيح');
+                }
+            } else {
+                alert('خطأ في الدخول');
+            }
+        }
+
+        function logout() {
+            document.getElementById('homePage').classList.remove('hidden');
+            document.getElementById('teacherPanel').classList.add('hidden');
+            document.getElementById('studentPanel').classList.add('hidden');
+            if(html5QrCode) {
+                html5QrCode.stop();
+            }
+        }
+
+        // ==================== نظام الكاميرا ====================
+        function openCamera() {
+            document.getElementById('cameraModal').classList.remove('hidden');
+            
+            html5QrCode = new Html5Qrcode("reader");
+            html5QrCode.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: 250 },
+                onScanSuccess,
+                onScanError
+            ).catch(err => {
+                alert('خطأ في تشغيل الكاميرا: ' + err);
+            });
+        }
+
+        function onScanSuccess(decodedText) {
+            // البحث عن الطالب بالكود
+            const student = students.find(s => s.code === decodedText);
+            const date = document.getElementById('attendanceDate').value || new Date().toISOString().split('T')[0];
+            
+            if(student) {
+                // تسجيل الحضور
+                if(!attendance[date]) attendance[date] = {};
+                
+                attendance[date][student.id] = {
+                    name: student.name,
+                    time: new Date().toLocaleTimeString('ar-EG'),
+                    method: 'QR'
+                };
+                
+                localStorage.setItem('attendance', JSON.stringify(attendance));
+                
+                document.getElementById('scanResult').innerHTML = `
+                    ✅ تم تسجيل حضور ${student.name}
+                    <br>
+                    <span class="text-sm text-green-400">${new Date().toLocaleTimeString('ar-EG')}</span>
+                `;
+                
+                // تحديث واجهة الحضور
+                if(document.getElementById('attendanceSection').classList.contains('hidden') === false) {
+                    updateAttendanceUI();
+                }
+                
+                // تأخير قبل المسح التالي
+                setTimeout(() => {
+                    document.getElementById('scanResult').innerHTML = '';
+                }, 3000);
+            } else {
+                document.getElementById('scanResult').innerHTML = '❌ كود غير صحيح';
+                setTimeout(() => {
+                    document.getElementById('scanResult').innerHTML = '';
+                }, 2000);
+            }
+        }
+
+        function onScanError(error) {
+            // تجاهل الأخطاء
+        }
+
+        function closeCamera() {
+            if(html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    document.getElementById('cameraModal').classList.add('hidden');
+                });
+            } else {
+                document.getElementById('cameraModal').classList.add('hidden');
+            }
+        }
+
+        // ==================== تبويبات المدرس ====================
+        function showTeacherTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active-tab'));
+            document.querySelectorAll('.tab-section').forEach(s => s.classList.add('hidden'));
+            
+            if(tab === 'students') {
+                document.getElementById('tabStudents').classList.add('active-tab');
+                document.getElementById('studentsSection').classList.remove('hidden');
+            } else if(tab === 'videos') {
+                document.getElementById('tabVideos').classList.add('active-tab');
+                document.getElementById('videosSection').classList.remove('hidden');
+            } else {
+                document.getElementById('tabAttendance').classList.add('active-tab');
+                document.getElementById('attendanceSection').classList.remove('hidden');
+                updateAttendanceUI();
+            }
+        }
+
+        // ==================== إدارة الطلاب مع QR ====================
+        function addStudent() {
+            const student = {
+                id: Date.now(),
+                name: document.getElementById('stdName').value,
+                code: document.getElementById('stdCode').value,
+                parent: document.getElementById('stdParent').value,
+                center: document.getElementById('stdCenter').value,
+                year: document.getElementById('stdYear').value
+            };
+            
+            if(student.name && student.code) {
+                students.push(student);
+                localStorage.setItem('students', JSON.stringify(students));
+                updateTeacherUI();
+                clearStudentInputs();
+            }
+        }
+
+        function updateTeacherUI() {
+            document.getElementById('totalStudents').innerText = students.length;
+            document.getElementById('totalVideos').innerText = videos.length;
+            document.getElementById('totalViews').innerText = videos.reduce((sum, v) => sum + (v.views || 0), 0);
+            
+            // عرض الطلاب مع QR Code
+            document.getElementById('studentsList').innerHTML = students.map(s => {
+                setTimeout(() => {
+                    const qrDiv = document.getElementById(`qr-${s.id}`);
+                    if(qrDiv) {
+                        qrDiv.innerHTML = '';
+                        new QRCode(qrDiv, {
+                            text: String(s.code),
+                            width: 80,
+                            height: 80
+                        });
+                    }
+                }, 100);
+                
+                return `
+                    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h4 class="font-bold text-amber-400">${s.name}</h4>
+                                <p class="text-sm">🔑 كود: ${s.code}</p>
+                                <p class="text-sm">📞 ولي الأمر: ${s.parent}</p>
+                                <p class="text-sm">🏫 ${s.center}</p>
+                                <p class="text-sm">📚 سنة ${s.year}</p>
+                            </div>
+                            <div id="qr-${s.id}" class="bg-white p-1 rounded-lg"></div>
+                        </div>
+                        <button onclick="deleteStudent(${s.id})" class="mt-2 text-xs text-red-500">حذف</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function deleteStudent(id) {
+            if(confirm('هل أنت متأكد من الحذف؟')) {
+                students = students.filter(s => s.id !== id);
+                localStorage.setItem('students', JSON.stringify(students));
+                updateTeacherUI();
+            }
+        }
+
+        function clearStudentInputs() {
+            document.getElementById('stdName').value = '';
+            document.getElementById('stdCode').value = '';
+            document.getElementById('stdParent').value = '';
+            document.getElementById('stdCenter').value = '';
+        }
+
+        // ==================== إدارة الفيديوهات ====================
+        function addVideo() {
+            const url = document.getElementById('videoUrl').value;
+            let videoId = '';
+            
+            if(url.includes('v=')) videoId = url.split('v=')[1].split('&')[0];
+            else if(url.includes('youtu.be/')) videoId = url.split('youtu.be/')[1].split('?')[0];
+            
+            if(videoId) {
+                const video = {
+                    id: Date.now(),
+                    title: document.getElementById('videoTitle').value,
+                    videoId: videoId,
+                    center: document.getElementById('videoCenter').value,
+                    year: document.getElementById('videoYear').value,
+                    maxViews: parseInt(document.getElementById('videoMaxViews').value) || 10,
+                    views: 0
+                };
+                
+                videos.push(video);
+                localStorage.setItem('videos', JSON.stringify(videos));
+                updateTeacherUI();
+                
+                document.getElementById('videoTitle').value = '';
+                document.getElementById('videoUrl').value = '';
+                document.getElementById('videoCenter').value = '';
+            }
+        }
+
+        // ==================== نظام الحضور ====================
+        function updateAttendanceUI() {
+            const date = document.getElementById('attendanceDate').value || new Date().toISOString().split('T')[0];
+            const todayAttendance = attendance[date] || {};
+            
+            document.getElementById('todayAttendance').innerText = Object.keys(todayAttendance).length;
+            
+            document.getElementById('attendanceList').innerHTML = students.map(s => {
+                const isPresent = todayAttendance[s.id];
+                return `
+                    <div class="flex justify-between items-center p-3 bg-slate-700 rounded-lg">
+                        <div>
+                            <span class="font-bold">${s.name}</span>
+                            <span class="text-xs text-gray-400 mr-2">${s.center}</span>
+                            ${isPresent ? `<span class="text-xs text-green-400 block">${isPresent.time}</span>` : ''}
+                        </div>
+                        <button onclick="toggleAttendance('${date}', ${s.id})" 
+                                class="px-3 py-1 rounded-lg text-sm ${isPresent ? 'bg-green-600' : 'bg-slate-600'}">
+                            ${isPresent ? '✅ حاضر' : '⭕ تسجيل'}
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleAttendance(date, studentId) {
+            if(!attendance[date]) attendance[date] = {};
+            
+            if(attendance[date][studentId]) {
+                delete attendance[date][studentId];
+            } else {
+                const student = students.find(s => s.id === studentId);
+                attendance[date][studentId] = {
+                    name: student.name,
+                    time: new Date().toLocaleTimeString('ar-EG'),
+                    method: 'يدوي'
+                };
+            }
+            
+            localStorage.setItem('attendance', JSON.stringify(attendance));
+            updateAttendanceUI();
+        }
+
+        // ==================== دوال الطالب ====================
+        function updateStudentUI() {
+            // الفيديوهات المخصصة
+            const studentVideos = videos.filter(v => 
+                (v.year === 'all' || v.year == currentUser.year) && 
+                (v.center === 'all' || v.center === currentUser.center)
+            );
+            
+            document.getElementById('studentVideosList').innerHTML = studentVideos.map(v => {
+                const canWatch = (v.views || 0) < v.maxViews;
+                return `
+                    <div class="bg-slate-800 p-4 rounded-xl ${!canWatch ? 'opacity-50' : ''}">
+                        <h4 class="font-bold">${v.title}</h4>
+                        <img src="https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg" 
+                             class="w-full rounded-lg my-2 cursor-pointer"
+                             onclick="${canWatch ? `watchVideo('${v.videoId}', '${v.title}', ${v.views || 0}, ${v.maxViews})` : 'alert(\'انتهت المشاهدات\')'}">
+                        <div class="flex justify-between text-sm">
+                            <span>👁 ${v.views || 0}/${v.maxViews}</span>
+                            <span class="${canWatch ? 'text-green-400' : 'text-red-400'}">${canWatch ? 'متاح' : 'منتهي'}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // سجل الحضور
+            const studentAttendance = [];
+            Object.keys(attendance).forEach(date => {
+                if(attendance[date][currentUser.id]) {
+                    studentAttendance.push(`
+                        <div class="flex justify-between p-2 bg-slate-700 rounded">
+                            <span>📅 ${date}</span>
+                            <span class="text-green-400">✅ ${attendance[date][currentUser.id].time}</span>
+                        </div>
+                    `);
+                }
+            });
+            
+            document.getElementById('studentAttendance').innerHTML = studentAttendance.join('') || 'لا يوجد سجل حضور';
+        }
+
+        // ==================== مشاهدة الفيديو ====================
+        function watchVideo(videoId, title, currentViews, maxViews) {
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalVideo').innerHTML = `
+                <iframe class="w-full h-full rounded-lg" src="https://www.youtube.com/embed/${videoId}?autoplay=1" frameborder="0" allowfullscreen></iframe>
+            `;
+            document.getElementById('modalViews').innerText = `المشاهدة ${currentViews + 1}/${maxViews}`;
+            document.getElementById('modalRemaining').innerText = `متبقي ${maxViews - (currentViews + 1)}`;
+            document.getElementById('videoModal').classList.remove('hidden');
+
+            // تحديث المشاهدات
+            const video = videos.find(v => v.videoId === videoId);
+            if(video) {
+                video.views = (video.views || 0) + 1;
+                localStorage.setItem('videos', JSON.stringify(videos));
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('videoModal').classList.add('hidden');
+            document.getElementById('modalVideo').innerHTML = '';
+        }
+
+        // تهيئة
+        document.getElementById('attendanceDate').value = new Date().toISOString().split('T')[0];
+    </script>
+
+    <style>
+        .active-tab { background: #eab308; color: #0f172a; font-weight: 900; }
+        .tab-btn { transition: all 0.3s; cursor: pointer; }
+        .tab-btn:hover { opacity: 0.9; }
+    </style>
+</body>
+</html>
