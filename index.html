@@ -4,24 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>منصة الرشيدي - نظام متكامل مع Firebase</title>
+    <!-- Tailwind + Fonts + Icons -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
-    <!-- Firebase SDK -->
+    <!-- Firebase SDK (نسخة مستقرة) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap');
         * { font-family: 'Cairo', sans-serif; }
         .gold-gradient { background: linear-gradient(135deg, #eab308, #ca8a04); }
-        .glass { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
-        #reader { width: 100%; height: auto; border-radius: 1rem; overflow: hidden; }
+        .glass { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
+        #reader { width: 100%; height: auto; border-radius: 1rem; overflow: hidden; border: 3px solid #eab308; }
         
-        /* تأثيرات التحميل */
+        /* تأثيرات */
         .loading-spinner {
             width: 40px;
             height: 40px;
@@ -30,146 +30,181 @@
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
         
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        /* تأثيرات الإشعارات */
-        .toast {
+        #toast {
             position: fixed;
             top: 20px;
             left: 50%;
             transform: translateX(-50%) translateY(-100px);
-            background: #1e293b;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 50px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             z-index: 9999;
             transition: all 0.3s;
-            border-right: 4px solid #eab308;
         }
+        #toast.show { transform: translateX(-50%) translateY(0); }
         
-        .toast.show {
-            transform: translateX(-50%) translateY(0);
-        }
+        .active-tab { background: #eab308; color: #0f172a; font-weight: 900; }
+        .tab-btn { transition: all 0.3s; cursor: pointer; }
+        .tab-btn:hover { background: rgba(234, 179, 8, 0.2); }
     </style>
 </head>
 <body class="bg-gradient-to-br from-slate-900 to-slate-800 min-h-screen text-white">
 
-    <!-- شريط التحميل -->
-    <div id="loadingBar" class="fixed top-0 left-0 w-full h-1 bg-amber-500 z-50" style="width:0%; transition: width 0.3s;"></div>
-    
-    <!-- الإشعارات المنبثقة -->
-    <div id="toast" class="toast hidden"></div>
+    <!-- شاشة التحميل -->
+    <div id="loadingScreen" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center">
+        <div class="text-center">
+            <div class="loading-spinner mx-auto mb-4"></div>
+            <h2 class="text-2xl font-bold text-amber-400">منصة الرشيدي</h2>
+            <p class="text-gray-400 mt-2" id="loadingStatus">جاري الاتصال بقاعدة البيانات...</p>
+        </div>
+    </div>
 
-    <!-- ==================== الصفحة الرئيسية ==================== -->
+    <!-- الإشعارات -->
+    <div id="toast" class="hidden">
+        <div class="glass text-white px-6 py-3 rounded-2xl flex items-center gap-3 shadow-2xl border-r-4 border-amber-400">
+            <i class="fas fa-check-circle text-amber-400 text-xl"></i>
+            <span id="toastMessage">تم بنجاح</span>
+        </div>
+    </div>
+
+    <!-- الصفحة الرئيسية -->
     <div id="homePage" class="w-full max-w-4xl mx-auto p-4 min-h-screen flex items-center justify-center">
         <div class="text-center w-full">
-            <h1 class="text-5xl font-black text-white mb-4">🌟 منصة <span class="text-amber-400">الرشيدي</span> التعليمية</h1>
-            <p class="text-gray-400 text-lg mb-8">مستر محمد رستم</p>
+            <div class="mb-8">
+                <div class="w-32 h-32 bg-amber-400 rounded-3xl mx-auto mb-4 flex items-center justify-center shadow-2xl">
+                    <i class="fas fa-graduation-cap text-6xl text-slate-900"></i>
+                </div>
+                <h1 class="text-6xl font-black text-white mb-2">
+                    منصة <span class="text-amber-400">الرشيدي</span>
+                </h1>
+                <p class="text-xl text-gray-400">مستر محمد رستم</p>
+            </div>
 
-            <div class="max-w-md mx-auto bg-slate-800/50 p-6 rounded-3xl border border-slate-700">
-                <div class="mb-4">
-                    <select id="userType" class="w-full p-3 rounded-xl bg-slate-700 border border-slate-600 text-white">
+            <div class="max-w-md mx-auto glass p-8 rounded-3xl border border-amber-400/30">
+                <div class="mb-6">
+                    <select id="userType" class="w-full p-4 rounded-xl bg-slate-800 border-2 border-amber-400/30 text-white">
                         <option value="teacher">👨‍🏫 دخول المدرس</option>
                         <option value="student">👨‍🎓 دخول الطالب</option>
                     </select>
                 </div>
-                <div class="mb-4">
-                    <input type="password" id="password" placeholder="كلمة المرور أو كود الطالب" class="w-full p-3 rounded-xl bg-slate-700 border border-slate-600 text-white">
+                <div class="mb-6">
+                    <input type="password" id="password" placeholder="كلمة المرور أو كود الطالب" 
+                           class="w-full p-4 rounded-xl bg-slate-800 border-2 border-amber-400/30 text-white">
                 </div>
-                <button onclick="login()" class="w-full bg-amber-500 text-slate-900 font-bold py-3 rounded-xl hover:bg-amber-400 transition">
+                <button onclick="login()" class="w-full gold-gradient text-slate-900 font-black py-4 rounded-xl text-lg hover:scale-105 transition">
                     دخول
                 </button>
-                <p class="text-xs text-gray-500 mt-4">🔐 كلمة مرور المدرس: 1234</p>
+            </div>
+
+            <div class="grid grid-cols-3 gap-4 mt-8">
+                <div class="glass p-4 rounded-2xl">
+                    <div class="text-2xl font-bold text-amber-400" id="homeStudentsCount">0</div>
+                    <div class="text-sm text-gray-400">طالب</div>
+                </div>
+                <div class="glass p-4 rounded-2xl">
+                    <div class="text-2xl font-bold text-blue-400" id="homeVideosCount">0</div>
+                    <div class="text-sm text-gray-400">محاضرة</div>
+                </div>
+                <div class="glass p-4 rounded-2xl">
+                    <div class="text-2xl font-bold text-green-400" id="homeAttendanceToday">0</div>
+                    <div class="text-sm text-gray-400">حضور اليوم</div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- ==================== لوحة المدرس ==================== -->
-    <div id="teacherPanel" class="hidden w-full max-w-6xl mx-auto p-4">
-        <!-- الهيدر -->
-        <div class="glass sticky top-0 z-40 p-4 mb-6 rounded-2xl">
+    <!-- لوحة المدرس -->
+    <div id="teacherPanel" class="hidden w-full max-w-7xl mx-auto p-4">
+        <div class="glass sticky top-0 z-40 p-6 mb-6 rounded-2xl border border-amber-400/30">
             <div class="flex justify-between items-center">
-                <h2 class="text-2xl font-black text-amber-400">لوحة تحكم المدرس</h2>
-                <div class="flex gap-2">
-                    <button onclick="openCamera()" class="bg-green-600 text-white px-4 py-2 rounded-xl flex items-center gap-2">
-                        📷 كاميرا الحضور
+                <div>
+                    <h2 class="text-2xl font-black text-amber-400">لوحة تحكم المدرس</h2>
+                    <p class="text-sm text-gray-400">أهلاً بك يا مستر محمد</p>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="openCamera()" class="bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700">
+                        <i class="fas fa-camera ml-2"></i> كاميرا
                     </button>
-                    <button onclick="logout()" class="bg-red-500/20 text-red-500 px-4 py-2 rounded-xl">خروج</button>
+                    <button onclick="syncData()" class="bg-purple-600 text-white px-6 py-3 rounded-xl hover:bg-purple-700">
+                        <i class="fas fa-sync ml-2"></i> مزامنة
+                    </button>
+                    <button onclick="logout()" class="bg-red-500/20 text-red-500 px-6 py-3 rounded-xl hover:bg-red-500/30">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- إحصائيات -->
-        <div class="grid grid-cols-4 gap-3 mb-6">
-            <div class="bg-slate-800 p-3 rounded-xl text-center">
-                <span class="text-xs text-gray-400">الطلاب</span>
-                <p id="totalStudents" class="text-xl font-black text-amber-400">0</p>
+        <div class="grid grid-cols-5 gap-4 mb-6">
+            <div class="glass p-4 rounded-xl">
+                <i class="fas fa-users text-3xl text-amber-400 mb-2"></i>
+                <p class="text-sm text-gray-400">الطلاب</p>
+                <p id="totalStudents" class="text-3xl font-black">0</p>
             </div>
-            <div class="bg-slate-800 p-3 rounded-xl text-center">
-                <span class="text-xs text-gray-400">الفيديوهات</span>
-                <p id="totalVideos" class="text-xl font-black text-blue-400">0</p>
+            <div class="glass p-4 rounded-xl">
+                <i class="fas fa-video text-3xl text-blue-400 mb-2"></i>
+                <p class="text-sm text-gray-400">المحاضرات</p>
+                <p id="totalVideos" class="text-3xl font-black">0</p>
             </div>
-            <div class="bg-slate-800 p-3 rounded-xl text-center">
-                <span class="text-xs text-gray-400">المشاهدات</span>
-                <p id="totalViews" class="text-xl font-black text-green-400">0</p>
+            <div class="glass p-4 rounded-xl">
+                <i class="fas fa-eye text-3xl text-green-400 mb-2"></i>
+                <p class="text-sm text-gray-400">المشاهدات</p>
+                <p id="totalViews" class="text-3xl font-black">0</p>
             </div>
-            <div class="bg-slate-800 p-3 rounded-xl text-center">
-                <span class="text-xs text-gray-400">الحضور اليوم</span>
-                <p id="todayAttendance" class="text-xl font-black text-purple-400">0</p>
+            <div class="glass p-4 rounded-xl">
+                <i class="fas fa-calendar-check text-3xl text-purple-400 mb-2"></i>
+                <p class="text-sm text-gray-400">حضور اليوم</p>
+                <p id="todayAttendance" class="text-3xl font-black">0</p>
+            </div>
+            <div class="glass p-4 rounded-xl">
+                <i class="fas fa-percent text-3xl text-pink-400 mb-2"></i>
+                <p class="text-sm text-gray-400">النسبة</p>
+                <p id="attendancePercentage" class="text-3xl font-black">0%</p>
             </div>
         </div>
 
-        <!-- تبويبات -->
         <div class="flex bg-slate-800 rounded-2xl overflow-hidden mb-6">
-            <button onclick="showTeacherTab('students')" id="tabStudents" class="tab-btn active-tab flex-1 py-3 font-bold">👥 الطلاب</button>
-            <button onclick="showTeacherTab('videos')" id="tabVideos" class="tab-btn flex-1 py-3 font-bold">🎬 المحاضرات</button>
-            <button onclick="showTeacherTab('attendance')" id="tabAttendance" class="tab-btn flex-1 py-3 font-bold">📅 الحضور</button>
+            <button onclick="showTab('students')" id="tabStudents" class="tab-btn active-tab flex-1 py-4 font-bold">👥 الطلاب</button>
+            <button onclick="showTab('videos')" id="tabVideos" class="tab-btn flex-1 py-4 font-bold">🎬 المحاضرات</button>
+            <button onclick="showTab('attendance')" id="tabAttendance" class="tab-btn flex-1 py-4 font-bold">📅 الحضور</button>
         </div>
 
-        <!-- قسم الطلاب مع QR Code -->
+        <!-- قسم الطلاب -->
         <div id="studentsSection" class="tab-section">
-            <div class="bg-slate-800 p-6 rounded-2xl mb-6">
-                <h3 class="font-bold mb-4 text-lg text-amber-400">➕ إضافة طالب جديد</h3>
+            <div class="glass p-6 rounded-2xl mb-6">
+                <h3 class="font-bold mb-4 text-lg text-amber-400">➕ إضافة طالب</h3>
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <input type="text" id="stdName" placeholder="اسم الطالب" class="p-3 rounded-xl bg-slate-700 border-slate-600 text-white">
-                    <input type="text" id="stdCode" placeholder="كود الطالب" class="p-3 rounded-xl bg-slate-700 border-slate-600 text-white">
-                    <input type="text" id="stdParent" placeholder="رقم ولي الأمر" class="p-3 rounded-xl bg-slate-700 border-slate-600 text-white">
-                    <input type="text" id="stdCenter" placeholder="اسم السنتر" class="p-3 rounded-xl bg-slate-700 border-slate-600 text-white">
-                    <select id="stdYear" class="p-3 rounded-xl bg-slate-700 border-slate-600 text-white">
+                    <input type="text" id="stdName" placeholder="الاسم" class="p-3 rounded-xl bg-slate-700 text-white">
+                    <input type="text" id="stdCode" placeholder="الكود" class="p-3 rounded-xl bg-slate-700 text-white">
+                    <input type="text" id="stdParent" placeholder="ولي الأمر" class="p-3 rounded-xl bg-slate-700 text-white">
+                    <input type="text" id="stdCenter" placeholder="السنتر" class="p-3 rounded-xl bg-slate-700 text-white">
+                    <select id="stdYear" class="p-3 rounded-xl bg-slate-700 text-white">
                         <option value="1">الصف الأول</option>
                         <option value="2">الصف الثاني</option>
                         <option value="3">الصف الثالث</option>
                     </select>
-                    <input type="email" id="stdEmail" placeholder="البريد الإلكتروني" class="p-3 rounded-xl bg-slate-700 border-slate-600 text-white">
-                    <input type="text" id="stdGroup" placeholder="المجموعة" value="A" class="p-3 rounded-xl bg-slate-700 border-slate-600 text-white">
-                    <button onclick="addStudent()" class="bg-amber-500 text-slate-900 font-bold rounded-xl p-3 hover:bg-amber-400 transition">حفظ</button>
+                    <input type="text" id="stdGroup" placeholder="المجموعة" class="p-3 rounded-xl bg-slate-700 text-white">
+                    <button onclick="addStudent()" class="bg-amber-500 text-slate-900 font-bold rounded-xl p-3 col-span-2">حفظ</button>
                 </div>
             </div>
             <div id="studentsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
         </div>
 
-        <!-- قسم الفيديوهات -->
+        <!-- قسم المحاضرات -->
         <div id="videosSection" class="tab-section hidden">
-            <div class="bg-slate-800 p-6 rounded-2xl mb-6">
+            <div class="glass p-6 rounded-2xl mb-6">
                 <h3 class="font-bold mb-4 text-lg text-blue-400">➕ إضافة محاضرة</h3>
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <input type="text" id="videoTitle" placeholder="عنوان المحاضرة" class="p-3 rounded-xl bg-slate-700 border-slate-600 text-white">
-                    <input type="text" id="videoUrl" placeholder="رابط يوتيوب" class="p-3 rounded-xl bg-slate-700 border-slate-600 text-white">
-                    <input type="text" id="videoCenter" placeholder="السنتر المستهدف" class="p-3 rounded-xl bg-slate-700 border-slate-600 text-white">
-                    <select id="videoYear" class="p-3 rounded-xl bg-slate-700 border-slate-600 text-white">
+                    <input type="text" id="videoTitle" placeholder="العنوان" class="p-3 rounded-xl bg-slate-700 text-white">
+                    <input type="text" id="videoUrl" placeholder="رابط يوتيوب" class="p-3 rounded-xl bg-slate-700 text-white">
+                    <input type="text" id="videoCenter" placeholder="السنتر" class="p-3 rounded-xl bg-slate-700 text-white">
+                    <select id="videoYear" class="p-3 rounded-xl bg-slate-700 text-white">
                         <option value="all">كل السنوات</option>
-                        <option value="1">الصف الأول</option>
-                        <option value="2">الصف الثاني</option>
-                        <option value="3">الصف الثالث</option>
+                        <option value="1">الأول</option>
+                        <option value="2">الثاني</option>
+                        <option value="3">الثالث</option>
                     </select>
-                    <input type="number" id="videoMaxViews" placeholder="حد المشاهدات" value="10" class="p-3 rounded-xl bg-slate-700 border-slate-600 text-white">
-                    <input type="date" id="videoDate" class="p-3 rounded-xl bg-slate-700 border-slate-600 text-white">
-                    <input type="time" id="videoTime" value="20:00" class="p-3 rounded-xl bg-slate-700 border-slate-600 text-white">
-                    <button onclick="addVideo()" class="bg-blue-600 text-white font-bold rounded-xl p-3 hover:bg-blue-700 transition">نشر</button>
+                    <input type="number" id="videoMaxViews" placeholder="حد المشاهدات" value="10" class="p-3 rounded-xl bg-slate-700 text-white">
+                    <button onclick="addVideo()" class="bg-blue-600 text-white font-bold rounded-xl p-3 col-span-3">نشر</button>
                 </div>
             </div>
             <div id="videosList" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
@@ -177,71 +212,71 @@
 
         <!-- قسم الحضور -->
         <div id="attendanceSection" class="tab-section hidden">
-            <div class="bg-slate-800 p-6 rounded-2xl">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-bold text-lg">📅 سجل الحضور</h3>
-                    <button onclick="openCamera()" class="bg-green-600 text-white px-4 py-2 rounded-xl flex items-center gap-2">
-                        📷 مسح QR
-                    </button>
+            <div class="glass p-6 rounded-2xl">
+                <div class="flex justify-between mb-6">
+                    <h3 class="font-bold text-lg text-green-400">📅 سجل الحضور</h3>
+                    <div class="flex gap-3">
+                        <input type="date" id="attendanceDate" class="p-3 rounded-xl bg-slate-700 text-white">
+                        <button onclick="openCamera()" class="bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700">
+                            <i class="fas fa-camera ml-2"></i> مسح QR
+                        </button>
+                    </div>
                 </div>
-                <div class="mb-4">
-                    <input type="date" id="attendanceDate" class="p-2 rounded-lg bg-slate-700 text-white">
-                </div>
-                <div id="attendanceList" class="space-y-2 max-h-96 overflow-y-auto"></div>
+                <div id="attendanceList" class="space-y-3 max-h-96 overflow-y-auto"></div>
             </div>
         </div>
     </div>
 
-    <!-- ==================== لوحة الطالب ==================== -->
+    <!-- لوحة الطالب -->
     <div id="studentPanel" class="hidden w-full max-w-4xl mx-auto p-4">
-        <div class="glass sticky top-0 z-40 p-4 mb-6 rounded-2xl">
-            <div class="flex justify-between items-center">
+        <div class="glass sticky top-0 z-40 p-6 mb-6 rounded-2xl">
+            <div class="flex justify-between">
                 <div>
                     <h2 id="studentName" class="text-2xl font-black text-blue-400"></h2>
                     <p id="studentInfo" class="text-sm text-gray-400"></p>
                 </div>
-                <div class="flex gap-2">
-                    <div id="studentQRCode" class="w-12 h-12 bg-white p-1 rounded-lg"></div>
-                    <button onclick="logout()" class="bg-red-500/20 text-red-500 px-4 py-2 rounded-xl">خروج</button>
+                <div class="flex gap-4">
+                    <div id="studentQRCode" class="w-16 h-16 bg-white p-1 rounded-xl"></div>
+                    <button onclick="logout()" class="bg-red-500/20 text-red-500 px-6 py-3 rounded-xl">خروج</button>
                 </div>
             </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div id="studentVideos" class="space-y-4">
-                <h3 class="font-bold text-lg text-blue-400">🎬 المحاضرات المتاحة</h3>
+            <div>
+                <h3 class="font-bold text-lg text-blue-400 mb-4">🎬 المحاضرات المتاحة</h3>
                 <div id="studentVideosList" class="space-y-4"></div>
             </div>
             <div>
-                <h3 class="font-bold text-lg text-green-400">📅 سجل حضورك</h3>
-                <div id="studentAttendance" class="bg-slate-800 p-4 rounded-2xl mt-4 space-y-2"></div>
+                <h3 class="font-bold text-lg text-green-400 mb-4">📅 سجل حضورك</h3>
+                <div id="studentAttendance" class="glass p-4 rounded-2xl space-y-2"></div>
             </div>
         </div>
     </div>
 
     <!-- نافذة الكاميرا -->
     <div id="cameraModal" class="hidden fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4">
-        <div class="bg-slate-800 rounded-3xl w-full max-w-2xl p-4">
+        <div class="glass rounded-3xl w-full max-w-2xl p-6">
             <div class="flex justify-between mb-4">
-                <h3 class="text-xl font-bold text-green-400">📷 مسح QR كود الطالب</h3>
+                <h3 class="text-xl font-bold text-green-400">📷 مسح QR</h3>
                 <button onclick="closeCamera()" class="text-white text-3xl">&times;</button>
             </div>
-            <div id="reader" class="w-full rounded-xl overflow-hidden bg-black"></div>
-            <div id="scanResult" class="mt-4 p-3 rounded-xl text-center font-bold"></div>
+            <div id="reader"></div>
+            <div id="scanResult" class="mt-4 p-4 text-center font-bold"></div>
         </div>
     </div>
 
     <!-- نافذة الفيديو -->
     <div id="videoModal" class="hidden fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4">
-        <div class="bg-slate-800 rounded-3xl w-full max-w-4xl p-4">
+        <div class="glass rounded-3xl w-full max-w-5xl p-6">
             <div class="flex justify-between mb-4">
                 <h3 id="modalTitle" class="text-xl font-bold text-blue-400"></h3>
                 <button onclick="closeModal()" class="text-white text-3xl">&times;</button>
             </div>
             <div id="modalVideo" class="aspect-video bg-black rounded-xl"></div>
-            <div class="mt-4 flex justify-between text-sm">
+            <div class="mt-4 flex gap-4">
                 <span id="modalViews" class="text-gray-400"></span>
-                <span id="modalRemaining" class="text-amber-400 font-bold"></span>
+                <span id="modalRemaining" class="text-amber-400"></span>
             </div>
         </div>
     </div>
@@ -249,151 +284,107 @@
     <script>
         // ==================== تهيئة Firebase ====================
         const firebaseConfig = {
-            apiKey: "AIzaSyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-            authDomain: "your-project.firebaseapp.com",
-            projectId: "your-project",
-            storageBucket: "your-project.appspot.com",
-            messagingSenderId: "000000000000",
-            appId: "1:000000000000:web:aaaaaaaaaaaaaaaaaaaaaa"
+            apiKey: "AIzaSyDJiGrK0AnGQvWszbp6o7RFZJQO5Rm0yBQ",
+            authDomain: "mohamedrostom-b6027.firebaseapp.com",
+            databaseURL: "https://mohamedrostom-b6027-default-rtdb.firebaseio.com",
+            projectId: "mohamedrostom-b6027",
+            storageBucket: "mohamedrostom-b6027.appspot.com",
+            messagingSenderId: "63872187835",
+            appId: "1:63872187835:web:21be801c57783c853ed89e"
         };
 
-        // تهيئة Firebase
+        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        
-        // استخدام LocalStorage كنسخة احتياطية
-        let useLocalStorage = false;
+        const database = firebase.database();
 
-        // ==================== شريط التحميل ====================
-        function setProgress(percent) {
-            document.getElementById('loadingBar').style.width = percent + '%';
-        }
-
-        // ==================== الإشعارات ====================
-        function showToast(message, type = 'success') {
-            const toast = document.getElementById('toast');
-            toast.innerHTML = message;
-            toast.classList.remove('hidden');
-            toast.classList.add('show');
-            
-            setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => toast.classList.add('hidden'), 300);
-            }, 3000);
-        }
-
-        // ==================== تحميل البيانات من Firebase ====================
-        async function loadData() {
-            setProgress(30);
-            try {
-                // تحميل الطلاب
-                const studentsSnapshot = await db.collection('students').get();
-                students = studentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                setProgress(60);
-                
-                // تحميل الفيديوهات
-                const videosSnapshot = await db.collection('videos').get();
-                videos = videosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                setProgress(80);
-                
-                // تحميل الحضور
-                const attendanceSnapshot = await db.collection('attendance').get();
-                attendance = {};
-                attendanceSnapshot.docs.forEach(doc => {
-                    attendance[doc.id] = doc.data();
-                });
-                
-                setProgress(100);
-                setTimeout(() => setProgress(0), 500);
-                
-                updateHomeStats();
-                
-            } catch (error) {
-                console.error('خطأ في تحميل البيانات:', error);
-                showToast('خطأ في الاتصال بقاعدة البيانات', 'error');
-                // الرجوع إلى LocalStorage
-                useLocalStorage = true;
-                loadFromLocalStorage();
-            }
-        }
-
-        function loadFromLocalStorage() {
-            students = JSON.parse(localStorage.getItem('students')) || [];
-            videos = JSON.parse(localStorage.getItem('videos')) || [];
-            attendance = JSON.parse(localStorage.getItem('attendance')) || {};
-            showToast('تم التحميل من النسخة المحلية', 'info');
-            updateHomeStats();
-        }
-
-        // ==================== حفظ البيانات في Firebase ====================
-        async function saveStudents() {
-            if (useLocalStorage) {
-                localStorage.setItem('students', JSON.stringify(students));
-                return;
-            }
-            
-            try {
-                for (const student of students) {
-                    await db.collection('students').doc(String(student.id)).set(student);
-                }
-            } catch (error) {
-                console.error('خطأ في حفظ الطلاب:', error);
-                useLocalStorage = true;
-            }
-        }
-
-        async function saveVideos() {
-            if (useLocalStorage) {
-                localStorage.setItem('videos', JSON.stringify(videos));
-                return;
-            }
-            
-            try {
-                for (const video of videos) {
-                    await db.collection('videos').doc(String(video.id)).set(video);
-                }
-            } catch (error) {
-                console.error('خطأ في حفظ الفيديوهات:', error);
-                useLocalStorage = true;
-            }
-        }
-
-        async function saveAttendance() {
-            if (useLocalStorage) {
-                localStorage.setItem('attendance', JSON.stringify(attendance));
-                return;
-            }
-            
-            try {
-                for (const [date, data] of Object.entries(attendance)) {
-                    await db.collection('attendance').doc(date).set(data);
-                }
-            } catch (error) {
-                console.error('خطأ في حفظ الحضور:', error);
-                useLocalStorage = true;
-            }
-        }
-
-        // ==================== البيانات المحلية ====================
+        // ==================== البيانات ====================
         let students = [];
         let videos = [];
         let attendance = {};
         let currentUser = null;
         let html5QrCode = null;
 
-        // تحميل البيانات عند البدء
-        loadData();
+        // ==================== تحميل البيانات من Firebase ====================
+        function loadData() {
+            document.getElementById('loadingStatus').innerHTML = 'جاري تحميل بيانات الطلاب...';
+            
+            // الاستماع للتغييرات في الوقت الفعلي
+            database.ref('students').on('value', (snapshot) => {
+                const data = snapshot.val();
+                students = data ? Object.values(data) : [];
+                document.getElementById('loadingStatus').innerHTML = 'تم تحميل الطلاب';
+                updateHomeStats();
+                if (!document.getElementById('teacherPanel').classList.contains('hidden')) {
+                    updateTeacherUI();
+                }
+            });
 
-        // تحديث إحصائيات الصفحة الرئيسية
+            database.ref('videos').on('value', (snapshot) => {
+                const data = snapshot.val();
+                videos = data ? Object.values(data) : [];
+                document.getElementById('loadingStatus').innerHTML = 'تم تحميل المحاضرات';
+            });
+
+            database.ref('attendance').on('value', (snapshot) => {
+                const data = snapshot.val();
+                attendance = data || {};
+                document.getElementById('loadingStatus').innerHTML = 'تم تحميل الحضور';
+                
+                setTimeout(() => {
+                    document.getElementById('loadingScreen').style.display = 'none';
+                }, 1000);
+            });
+        }
+
+        // ==================== حفظ البيانات في Firebase ====================
+        function saveStudents() {
+            const studentsObj = {};
+            students.forEach(s => { studentsObj[s.id] = s; });
+            database.ref('students').set(studentsObj);
+        }
+
+        function saveVideos() {
+            const videosObj = {};
+            videos.forEach(v => { videosObj[v.id] = v; });
+            database.ref('videos').set(videosObj);
+        }
+
+        function saveAttendance() {
+            database.ref('attendance').set(attendance);
+        }
+
+        // ==================== مزامنة يدوية ====================
+        function syncData() {
+            showToast('جاري المزامنة...', 'info');
+            saveStudents();
+            saveVideos();
+            saveAttendance();
+            showToast('تمت المزامنة بنجاح');
+        }
+
+        // ==================== الإشعارات ====================
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMessage');
+            toastMsg.textContent = message;
+            toast.classList.remove('hidden');
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.classList.add('hidden'), 300);
+            }, 3000);
+        }
+
+        // ==================== تحديث الإحصائيات ====================
         function updateHomeStats() {
             const today = new Date().toISOString().split('T')[0];
             const todayAttendance = attendance[today] ? Object.keys(attendance[today]).length : 0;
-            
-            document.getElementById('homeStudentsCount')?.remove();
-            // إضافة إحصائيات للصفحة الرئيسية إذا أردت
+            document.getElementById('homeStudentsCount').textContent = students.length;
+            document.getElementById('homeVideosCount').textContent = videos.length;
+            document.getElementById('homeAttendanceToday').textContent = todayAttendance;
         }
 
-        // ==================== الدخول والخروج ====================
+        // ==================== الدخول ====================
         function login() {
             const type = document.getElementById('userType').value;
             const pass = document.getElementById('password').value;
@@ -403,21 +394,22 @@
                 document.getElementById('teacherPanel').classList.remove('hidden');
                 updateTeacherUI();
                 showToast('مرحباً مستر محمد');
-            } else if(type === 'student') {
+            } 
+            else if(type === 'student') {
                 const student = students.find(s => s.code === pass);
                 if(student) {
                     currentUser = student;
                     document.getElementById('homePage').classList.add('hidden');
                     document.getElementById('studentPanel').classList.remove('hidden');
-                    document.getElementById('studentName').innerText = `أهلاً ${student.name}`;
-                    document.getElementById('studentInfo').innerText = `${student.center || 'لا يوجد'} - سنة ${student.year} - مجموعة ${student.group || 'A'}`;
                     
-                    // إنشاء QR Code للطالب
+                    document.getElementById('studentName').innerHTML = `أهلاً ${student.name}`;
+                    document.getElementById('studentInfo').innerHTML = `${student.center} - سنة ${student.year}`;
+                    
                     document.getElementById('studentQRCode').innerHTML = '';
                     new QRCode(document.getElementById('studentQRCode'), {
                         text: String(student.code),
-                        width: 48,
-                        height: 48
+                        width: 60,
+                        height: 60
                     });
                     
                     updateStudentUI();
@@ -425,8 +417,6 @@
                 } else {
                     showToast('كود طالب غير صحيح', 'error');
                 }
-            } else {
-                showToast('خطأ في الدخول', 'error');
             }
         }
 
@@ -434,81 +424,58 @@
             document.getElementById('homePage').classList.remove('hidden');
             document.getElementById('teacherPanel').classList.add('hidden');
             document.getElementById('studentPanel').classList.add('hidden');
-            if(html5QrCode) {
-                html5QrCode.stop();
-            }
-            showToast('تم تسجيل الخروج');
+            if(html5QrCode) html5QrCode.stop();
+            updateHomeStats();
         }
 
-        // ==================== نظام الكاميرا ====================
+        // ==================== الكاميرا ====================
         function openCamera() {
             document.getElementById('cameraModal').classList.remove('hidden');
-            
             html5QrCode = new Html5Qrcode("reader");
             html5QrCode.start(
                 { facingMode: "environment" },
                 { fps: 10, qrbox: 250 },
                 onScanSuccess,
                 onScanError
-            ).catch(err => {
-                showToast('خطأ في تشغيل الكاميرا', 'error');
-            });
+            ).catch(() => showToast('خطأ في الكاميرا', 'error'));
         }
 
-        async function onScanSuccess(decodedText) {
+        function onScanSuccess(decodedText) {
             const student = students.find(s => s.code === decodedText);
             const date = document.getElementById('attendanceDate').value || new Date().toISOString().split('T')[0];
             
             if(student) {
                 if(!attendance[date]) attendance[date] = {};
-                
                 attendance[date][student.id] = {
                     name: student.name,
                     time: new Date().toLocaleTimeString('ar-EG'),
-                    method: 'QR',
-                    center: student.center,
-                    year: student.year
+                    method: 'QR'
                 };
+                saveAttendance();
                 
-                await saveAttendance();
-                
-                document.getElementById('scanResult').innerHTML = `
-                    ✅ تم تسجيل حضور ${student.name}
-                    <br>
-                    <span class="text-sm text-green-400">${new Date().toLocaleTimeString('ar-EG')}</span>
-                `;
-                
-                if(document.getElementById('attendanceSection').classList.contains('hidden') === false) {
+                document.getElementById('scanResult').innerHTML = `✅ تم تسجيل حضور ${student.name}`;
+                if(!document.getElementById('attendanceSection').classList.contains('hidden')) {
                     updateAttendanceUI();
                 }
-                
                 showToast(`تسجيل حضور ${student.name}`);
                 
-                setTimeout(() => {
-                    document.getElementById('scanResult').innerHTML = '';
-                }, 3000);
+                setTimeout(() => document.getElementById('scanResult').innerHTML = '', 2000);
             } else {
                 document.getElementById('scanResult').innerHTML = '❌ كود غير صحيح';
-                setTimeout(() => {
-                    document.getElementById('scanResult').innerHTML = '';
-                }, 2000);
+                setTimeout(() => document.getElementById('scanResult').innerHTML = '', 2000);
             }
         }
 
-        function onScanError(error) {}
+        function onScanError() {}
 
         function closeCamera() {
-            if(html5QrCode) {
-                html5QrCode.stop().then(() => {
-                    document.getElementById('cameraModal').classList.add('hidden');
-                });
-            } else {
+            if(html5QrCode) html5QrCode.stop().then(() => {
                 document.getElementById('cameraModal').classList.add('hidden');
-            }
+            });
         }
 
-        // ==================== تبويبات المدرس ====================
-        function showTeacherTab(tab) {
+        // ==================== التبويبات ====================
+        function showTab(tab) {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active-tab'));
             document.querySelectorAll('.tab-section').forEach(s => s.classList.add('hidden'));
             
@@ -526,7 +493,7 @@
         }
 
         // ==================== إدارة الطلاب ====================
-        async function addStudent() {
+        function addStudent() {
             const student = {
                 id: Date.now(),
                 name: document.getElementById('stdName').value,
@@ -534,80 +501,73 @@
                 parent: document.getElementById('stdParent').value,
                 center: document.getElementById('stdCenter').value,
                 year: document.getElementById('stdYear').value,
-                email: document.getElementById('stdEmail').value,
-                group: document.getElementById('stdGroup').value || 'A',
-                createdAt: new Date().toISOString()
+                group: document.getElementById('stdGroup').value || 'A'
             };
             
             if(student.name && student.code) {
                 students.push(student);
-                await saveStudents();
+                saveStudents();
                 updateTeacherUI();
-                clearStudentInputs();
-                showToast('تم إضافة الطالب بنجاح');
-            } else {
-                showToast('الرجاء إدخال الاسم والكود', 'error');
+                clearInputs();
+                showToast('تم إضافة الطالب');
             }
         }
 
         function updateTeacherUI() {
+            const totalViews = videos.reduce((sum, v) => sum + (v.views || 0), 0);
+            const today = new Date().toISOString().split('T')[0];
+            const todayAttendance = attendance[today] ? Object.keys(attendance[today]).length : 0;
+            
             document.getElementById('totalStudents').innerText = students.length;
             document.getElementById('totalVideos').innerText = videos.length;
-            document.getElementById('totalViews').innerText = videos.reduce((sum, v) => sum + (v.views || 0), 0);
+            document.getElementById('totalViews').innerText = totalViews;
+            document.getElementById('todayAttendance').innerText = todayAttendance;
+            document.getElementById('attendancePercentage').innerText = students.length ? Math.round((todayAttendance/students.length)*100) + '%' : '0%';
             
             document.getElementById('studentsList').innerHTML = students.map(s => {
                 setTimeout(() => {
                     const qrDiv = document.getElementById(`qr-${s.id}`);
                     if(qrDiv) {
                         qrDiv.innerHTML = '';
-                        new QRCode(qrDiv, {
-                            text: String(s.code),
-                            width: 100,
-                            height: 100
-                        });
+                        new QRCode(qrDiv, { text: String(s.code), width: 80, height: 80 });
                     }
                 }, 100);
                 
                 return `
-                    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 hover:border-amber-400 transition">
-                        <div class="flex justify-between items-start">
+                    <div class="glass p-4 rounded-xl">
+                        <div class="flex justify-between">
                             <div>
-                                <h4 class="font-bold text-amber-400 text-lg">${s.name}</h4>
-                                <p class="text-sm"><span class="text-gray-400">🔑 كود:</span> ${s.code}</p>
-                                <p class="text-sm"><span class="text-gray-400">📞 ولي الأمر:</span> ${s.parent || 'لا يوجد'}</p>
-                                <p class="text-sm"><span class="text-gray-400">🏫 السنتر:</span> ${s.center || 'لا يوجد'}</p>
-                                <p class="text-sm"><span class="text-gray-400">📚 السنة:</span> ${s.year}</p>
-                                <p class="text-sm"><span class="text-gray-400">👥 المجموعة:</span> ${s.group || 'A'}</p>
+                                <h4 class="font-bold text-amber-400">${s.name}</h4>
+                                <p class="text-sm">🔑 ${s.code}</p>
+                                <p class="text-sm">📞 ${s.parent}</p>
+                                <p class="text-sm">🏫 ${s.center} - سنة ${s.year}</p>
                             </div>
                             <div id="qr-${s.id}" class="bg-white p-1 rounded-lg"></div>
                         </div>
-                        <button onclick="deleteStudent(${s.id})" class="mt-3 w-full bg-red-500/20 text-red-500 px-3 py-2 rounded-lg hover:bg-red-500/30 transition">
-                            <i class="fas fa-trash ml-1"></i> حذف
-                        </button>
+                        <button onclick="deleteStudent(${s.id})" class="mt-2 text-sm text-red-500">حذف</button>
                     </div>
                 `;
             }).join('');
         }
 
-        async function deleteStudent(id) {
-            if(confirm('هل أنت متأكد من الحذف؟')) {
+        function deleteStudent(id) {
+            if(confirm('تأكيد الحذف؟')) {
                 students = students.filter(s => s.id !== id);
-                await saveStudents();
+                saveStudents();
                 updateTeacherUI();
-                showToast('تم حذف الطالب');
+                showToast('تم الحذف');
             }
         }
 
-        function clearStudentInputs() {
+        function clearInputs() {
             document.getElementById('stdName').value = '';
             document.getElementById('stdCode').value = '';
             document.getElementById('stdParent').value = '';
             document.getElementById('stdCenter').value = '';
-            document.getElementById('stdEmail').value = '';
         }
 
-        // ==================== إدارة الفيديوهات ====================
-        async function addVideo() {
+        // ==================== إدارة المحاضرات ====================
+        function addVideo() {
             const url = document.getElementById('videoUrl').value;
             let videoId = '';
             
@@ -622,79 +582,51 @@
                     center: document.getElementById('videoCenter').value || 'all',
                     year: document.getElementById('videoYear').value,
                     maxViews: parseInt(document.getElementById('videoMaxViews').value) || 10,
-                    views: 0,
-                    date: document.getElementById('videoDate').value || new Date().toISOString().split('T')[0],
-                    time: document.getElementById('videoTime').value || '20:00',
-                    createdAt: new Date().toISOString()
+                    views: 0
                 };
                 
                 videos.push(video);
-                await saveVideos();
-                updateTeacherUI();
+                saveVideos();
                 updateVideosList();
-                
-                document.getElementById('videoTitle').value = '';
-                document.getElementById('videoUrl').value = '';
-                document.getElementById('videoCenter').value = '';
-                
-                showToast('تم إضافة المحاضرة بنجاح');
-            } else {
-                showToast('رابط يوتيوب غير صحيح', 'error');
+                showToast('تم إضافة المحاضرة');
             }
         }
 
         function updateVideosList() {
             document.getElementById('videosList').innerHTML = videos.map(v => `
-                <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 hover:border-blue-400 transition">
-                    <img src="https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg" 
-                         class="w-full rounded-lg mb-3 cursor-pointer"
-                         onclick="window.open('https://youtu.be/${v.videoId}')">
+                <div class="glass p-4 rounded-xl">
+                    <img src="https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg" class="w-full rounded-lg mb-3">
                     <h4 class="font-bold text-blue-400">${v.title}</h4>
-                    <div class="grid grid-cols-2 gap-2 text-sm mt-2">
+                    <div class="flex justify-between mt-2">
                         <span>👁 ${v.views || 0}/${v.maxViews}</span>
-                        <span>📅 ${v.date}</span>
-                        <span>⏰ ${v.time}</span>
-                        <span>📚 سنة ${v.year === 'all' ? 'الكل' : v.year}</span>
+                        <span>📚 سنة ${v.year}</span>
                     </div>
-                    <button onclick="deleteVideo(${v.id})" class="mt-3 w-full bg-red-500/20 text-red-500 px-3 py-2 rounded-lg hover:bg-red-500/30 transition">
-                        حذف
-                    </button>
+                    <button onclick="deleteVideo(${v.id})" class="mt-2 w-full bg-red-500/20 text-red-500 px-3 py-2 rounded-lg">حذف</button>
                 </div>
             `).join('');
         }
 
-        async function deleteVideo(id) {
-            if(confirm('هل أنت متأكد من الحذف؟')) {
+        function deleteVideo(id) {
+            if(confirm('تأكيد الحذف؟')) {
                 videos = videos.filter(v => v.id !== id);
-                await saveVideos();
-                updateTeacherUI();
+                saveVideos();
                 updateVideosList();
-                showToast('تم حذف المحاضرة');
+                showToast('تم الحذف');
             }
         }
 
-        // ==================== نظام الحضور ====================
+        // ==================== الحضور ====================
         function updateAttendanceUI() {
             const date = document.getElementById('attendanceDate').value || new Date().toISOString().split('T')[0];
             const todayAttendance = attendance[date] || {};
             
-            document.getElementById('todayAttendance').innerText = Object.keys(todayAttendance).length;
-            
             document.getElementById('attendanceList').innerHTML = students.map(s => {
                 const isPresent = todayAttendance[s.id];
                 return `
-                    <div class="flex justify-between items-center p-3 bg-slate-700 rounded-lg hover:bg-slate-600 transition">
-                        <div>
-                            <span class="font-bold">${s.name}</span>
-                            <span class="text-xs text-gray-400 mr-2">${s.center || ''} - مجموعة ${s.group || 'A'}</span>
-                            ${isPresent ? `
-                                <span class="text-xs text-green-400 block">
-                                    ✅ ${isPresent.time} (${isPresent.method})
-                                </span>
-                            ` : ''}
-                        </div>
+                    <div class="flex justify-between p-3 bg-slate-700 rounded-lg">
+                        <span>${s.name}</span>
                         <button onclick="toggleAttendance('${date}', ${s.id})" 
-                                class="px-4 py-2 rounded-lg text-sm font-bold ${isPresent ? 'bg-green-600 hover:bg-green-700' : 'bg-amber-600 hover:bg-amber-700'} transition">
+                                class="px-3 py-1 rounded-lg text-sm ${isPresent ? 'bg-green-600' : 'bg-slate-600'}">
                             ${isPresent ? '✅ حاضر' : '⭕ تسجيل'}
                         </button>
                     </div>
@@ -702,25 +634,21 @@
             }).join('');
         }
 
-        async function toggleAttendance(date, studentId) {
+        function toggleAttendance(date, studentId) {
             if(!attendance[date]) attendance[date] = {};
             
             if(attendance[date][studentId]) {
                 delete attendance[date][studentId];
-                showToast('تم إلغاء الحضور');
             } else {
                 const student = students.find(s => s.id === studentId);
                 attendance[date][studentId] = {
                     name: student.name,
                     time: new Date().toLocaleTimeString('ar-EG'),
-                    method: 'يدوي',
-                    center: student.center,
-                    year: student.year
+                    method: 'يدوي'
                 };
-                showToast(`تسجيل حضور ${student.name}`);
             }
             
-            await saveAttendance();
+            saveAttendance();
             updateAttendanceUI();
             updateTeacherUI();
         }
@@ -729,18 +657,18 @@
         function updateStudentUI() {
             const studentVideos = videos.filter(v => 
                 (v.year === 'all' || v.year == currentUser.year) && 
-                (!v.center || v.center === 'all' || v.center === currentUser.center)
+                (v.center === 'all' || v.center === currentUser.center)
             );
             
             document.getElementById('studentVideosList').innerHTML = studentVideos.map(v => {
                 const canWatch = (v.views || 0) < v.maxViews;
                 return `
-                    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 ${!canWatch ? 'opacity-50' : 'hover:border-blue-400'} transition">
-                        <h4 class="font-bold text-lg">${v.title}</h4>
+                    <div class="glass p-4 rounded-xl ${!canWatch ? 'opacity-50' : ''}">
+                        <h4 class="font-bold">${v.title}</h4>
                         <img src="https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg" 
-                             class="w-full rounded-lg my-3 cursor-pointer"
-                             onclick="${canWatch ? `watchVideo('${v.videoId}', '${v.title}', ${v.views || 0}, ${v.maxViews})` : 'showToast(\'انتهت المشاهدات\', \'error\')'}">
-                        <div class="flex justify-between text-sm">
+                             class="w-full rounded-lg my-2 cursor-pointer"
+                             onclick="${canWatch ? `watchVideo('${v.videoId}', '${v.title}', ${v.views || 0}, ${v.maxViews})` : ''}">
+                        <div class="flex justify-between">
                             <span>👁 ${v.views || 0}/${v.maxViews}</span>
                             <span class="${canWatch ? 'text-green-400' : 'text-red-400'}">${canWatch ? 'متاح' : 'منتهي'}</span>
                         </div>
@@ -749,7 +677,7 @@
             }).join('');
 
             const studentAttendance = [];
-            Object.keys(attendance).sort().reverse().slice(0, 5).forEach(date => {
+            Object.keys(attendance).forEach(date => {
                 if(attendance[date][currentUser.id]) {
                     studentAttendance.push(`
                         <div class="flex justify-between p-2 bg-slate-700 rounded">
@@ -760,14 +688,14 @@
                 }
             });
             
-            document.getElementById('studentAttendance').innerHTML = studentAttendance.join('') || 'لا يوجد سجل حضور';
+            document.getElementById('studentAttendance').innerHTML = studentAttendance.join('') || 'لا يوجد سجل';
         }
 
         // ==================== مشاهدة الفيديو ====================
-        async function watchVideo(videoId, title, currentViews, maxViews) {
+        function watchVideo(videoId, title, currentViews, maxViews) {
             document.getElementById('modalTitle').innerText = title;
             document.getElementById('modalVideo').innerHTML = `
-                <iframe class="w-full h-full rounded-lg" src="https://www.youtube.com/embed/${videoId}?autoplay=1" frameborder="0" allowfullscreen></iframe>
+                <iframe class="w-full h-full" src="https://www.youtube.com/embed/${videoId}?autoplay=1" frameborder="0" allowfullscreen></iframe>
             `;
             document.getElementById('modalViews').innerText = `المشاهدة ${currentViews + 1}/${maxViews}`;
             document.getElementById('modalRemaining').innerText = `متبقي ${maxViews - (currentViews + 1)}`;
@@ -776,7 +704,7 @@
             const video = videos.find(v => v.videoId === videoId);
             if(video) {
                 video.views = (video.views || 0) + 1;
-                await saveVideos();
+                saveVideos();
             }
         }
 
@@ -787,21 +715,7 @@
 
         // تهيئة
         document.getElementById('attendanceDate').value = new Date().toISOString().split('T')[0];
+        loadData();
     </script>
-
-    <style>
-        .active-tab { background: #eab308; color: #0f172a; font-weight: 900; }
-        .tab-btn { transition: all 0.3s; cursor: pointer; }
-        .tab-btn:hover { background: rgba(234, 179, 8, 0.2); }
-        
-        /* تأثيرات إضافية */
-        .hover-card {
-            transition: all 0.3s;
-        }
-        .hover-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px -5px rgba(234, 179, 8, 0.3);
-        }
-    </style>
 </body>
 </html>
